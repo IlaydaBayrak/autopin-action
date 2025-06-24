@@ -1,0 +1,40 @@
+name: Auto Pin Scheduler
+
+on:
+  schedule:
+    # Her gün saat 09:00 ve 21:00 UTC'de çalışsın
+    - cron: '0 6,9,12,15,18 * * *'
+  workflow_dispatch:  # Manuel tetikleme de olsun
+
+jobs:
+  pin:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v3
+
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.10'
+
+      - name: Install dependencies
+        run: pip install --upgrade pip
+
+      - name: Run pin script
+        env:
+          SMTP_USER: ${{ secrets.SMTP_USER }}
+          SMTP_PASS: ${{ secrets.SMTP_PASS }}
+          BOARD_EMAIL: ${{ secrets.BOARD_EMAIL }}
+        run: |
+          python scripts/send_pin_email.py
+
+      - name: Commit moved files
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "actions@github.com"
+          git add posted/
+          git commit -m "Move posted image" || echo "No changes to commit"
+          git push
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
